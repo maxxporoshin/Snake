@@ -41,17 +41,19 @@ namespace Snake
     public partial class Form1 : Form
     {
 
-        private int cellSize = 16;
-        private Size gridSize = new Size(15, 15);
-        private int interval = 100;
+        private int cellSize = 16; //size of the one cell
+        private Size gridSize = new Size(15, 15); //size of the main grid matrix
+        private int interval = 100; //main timer interval
+        private int sqz = 2; //snake's and food's rects reducing
+        private bool isDrawingGrid = true;
 
         private Rectangle[,] grid;
         private List<Pos> snake = new List<Pos>();
         private List<Pos> food = new List<Pos>();
         private Point dragFrom;
         private Timer timer;
-        private DirEnum dir;
-        private bool isDirChanged = false;
+        private DirEnum curDir;
+        private DirEnum newDir;
         private Pos nextPos;
         private bool isWaitingForUser = true;
         private Random random = new Random();
@@ -107,7 +109,7 @@ namespace Snake
             SolidBrush brush = new SolidBrush(Color.Black);
             for (int i = 0; i < snake.Count; i++)
             {
-                e.Graphics.FillRectangle(brush, grid[snake[i].i, snake[i].j]); 
+                e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[i].i, snake[i].j])); 
             }
             brush.Dispose();
         }
@@ -117,7 +119,7 @@ namespace Snake
             SolidBrush brush = new SolidBrush(Color.Crimson);
             foreach (Pos p in food)
             {
-                e.Graphics.FillRectangle(brush, grid[p.i, p.j]);
+                e.Graphics.FillRectangle(brush, squeezeRect(grid[p.i, p.j]));
             }
             brush.Dispose();
         }
@@ -125,7 +127,7 @@ namespace Snake
         private void moveSnake()
         {
             nextPos = snake[0];
-            switch (dir)
+            switch (newDir)
             {
                 case DirEnum.Up:
                     nextPos.j--;
@@ -183,7 +185,7 @@ namespace Snake
             {
                 InitializeSnake();
                 food.Clear();
-                dir = DirEnum.Up;
+                newDir = DirEnum.Up;
             }
             else
             {
@@ -217,6 +219,11 @@ namespace Snake
             newGame();
         }
 
+        private Rectangle squeezeRect(Rectangle rect)
+        {
+            return new Rectangle(rect.X + sqz, rect.Y + sqz, rect.Width - 2 * sqz, rect.Height - 2 * sqz);
+        }
+
         private void Form1_MouseDown(object sender, MouseEventArgs e)
         {
             dragFrom = e.Location;
@@ -234,47 +241,43 @@ namespace Snake
         private void OnTimerTick(object sender, EventArgs e)
         {
             moveSnake();
-            isDirChanged = false;
+            curDir = newDir;
             Invalidate();
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (!isDirChanged)
+            switch (e.KeyCode)
             {
-                switch (e.KeyCode)
-                {
-                    case Keys.Left:
-                        if (dir != DirEnum.Right)
-                            dir = DirEnum.Left;
+                case Keys.Left:
+                    if (curDir != DirEnum.Right)
+                        newDir = DirEnum.Left;
                         break;
-                    case Keys.Right:
-                        if (dir != DirEnum.Left)
-                            dir = DirEnum.Right;
+                case Keys.Right:
+                    if (curDir != DirEnum.Left)
+                        newDir = DirEnum.Right;
                         break;
-                    case Keys.Up:
-                        if (dir != DirEnum.Down)
-                            dir = DirEnum.Up;
+                case Keys.Up:
+                    if (curDir != DirEnum.Down)
+                        newDir = DirEnum.Up;
                         break;
-                    case Keys.Down:
-                        if (dir != DirEnum.Up)
-                            dir = DirEnum.Down;
+                case Keys.Down:
+                    if (curDir != DirEnum.Up)
+                        newDir = DirEnum.Down;
                         break;
-                }
-                isDirChanged = true;
+           }
                 if (isWaitingForUser)
                 {
                     isWaitingForUser = false;
                     newGame();
                 }
-            }
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            DrawGrid(e);
+            if (isDrawingGrid) DrawGrid(e);
             DrawSnake(e);
             DrawFood(e);
         }
