@@ -45,7 +45,7 @@ namespace Snake
         private Size gridSize = new Size(15, 15); //size of the main grid matrix
         private int interval = 100; //main timer interval
         private int sqz = 2; //snake's and food's rects reducing
-        private bool isDrawingGrid = true;
+        private bool isDrawingGrid = false;
 
         private Rectangle[,] grid;
         private List<Pos> snake = new List<Pos>();
@@ -68,6 +68,8 @@ namespace Snake
             timer.Tick += new System.EventHandler(this.OnTimerTick);
             timer.Interval = interval;
             InitializeGrid();
+            MessageBox.Show("Move snake: Arrows" + Environment.NewLine 
+                + "Pause: Space" + Environment.NewLine + "Quit: Q", "Welcome");
             newGame();
         }
 
@@ -214,7 +216,8 @@ namespace Snake
         private void lose()
         {
             timer.Stop();
-            MessageBox.Show("You Lose");
+            String str = "Your Score: " + snake.Count.ToString();
+            MessageBox.Show(str, "You Lose");
             isWaitingForUser = true;
             newGame();
         }
@@ -250,6 +253,7 @@ namespace Snake
             base.OnKeyDown(e);
             switch (e.KeyCode)
             {
+                //arrow keys - snake movement
                 case Keys.Left:
                     if (curDir != DirEnum.Right)
                         newDir = DirEnum.Left;
@@ -266,6 +270,13 @@ namespace Snake
                     if (curDir != DirEnum.Up)
                         newDir = DirEnum.Down;
                         break;
+                //utility
+                case Keys.Space: //pause
+                    timer.Enabled = timer.Enabled ? false : true;
+                    break;
+                case Keys.Q: //exit
+                    Application.Exit();
+                    break;
            }
                 if (isWaitingForUser)
                 {
@@ -281,6 +292,5 @@ namespace Snake
             DrawSnake(e);
             DrawFood(e);
         }
-
     }
 }
