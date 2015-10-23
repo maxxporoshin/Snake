@@ -1,64 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Snake
 {
-    struct Pos
-    {
-        public int i;
-        public int j;
-        public Pos(int i, int j) { this.i = i; this.j = j; }
-        public static bool operator ==(Pos p1, Pos p2)
-        {
-            if ((p1.i == p2.i) && (p1.j == p2.j))
-                return true;
-            else
-                return false;
-        }
-        public static bool operator !=(Pos p1, Pos p2)
-        {
-            return !(p1 == p2);
-        }
-        public override bool Equals(object obj)
-        {
-            return base.Equals(obj);
-        }
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-    }
 
     enum DirEnum { Up, Down, Right, Left }
 
     public partial class Form1 : Form
     {
-
-        private int cellSize = 16; //size of the one cell
-        private Size gridSize = new Size(15, 15); //size of the main grid matrix
-        private int interval = 100; //main timer interval
-        private int sqz = 2; //snake's and food's rects reducing
+        //Size of the one cell.
+        private int cellSize = 16;
+        //Size of the main grid matrix.
+        private Size gridSize = new Size(15, 15);
+        //Main timer interval.
+        private int interval = 100;
+        //Snake's and food's cells reducing.
+        private int sqz = 2;
+        //Draw grid by cell's cells(todo: draw by lines).
         private bool isDrawingGrid = false;
 
+        //Main grid which is initialized in form constructor with set in gridSize size.
         private Rectangle[,] grid;
-        private List<Pos> snake = new List<Pos>();
-        private List<Pos> food = new List<Pos>();
+		//Positions of the snake body's cells on the grid.
+        private List<Point> snake = new List<Point>();
+		//Positions of the food cells on the grid.
+        private List<Point> food = new List<Point>();
+		//Location where mouse was clicked on form, used to drag the form.
         private Point dragFrom;
+		//Main game timer.
         private Timer timer;
+		//Current direction of the snake.
         private DirEnum curDir;
+		//New direction of the snake that set by player with arrows and WASD.
         private DirEnum newDir;
-        private Pos nextPos;
+		//Position where snake will move on the next timer's tick.
+        private Point nextPos;
+		//Game state, used to wait player when new game started.
         private bool isWaitingForUser = true;
+		//Random unit, used in food spawning.
         private Random random = new Random();
-        private Pos[] freeCells;
+		//Storing all snake free cells of the grid, used in food spawning 
+        private Point[] freeCells;
      
+		//Initialize component, grid, timer, greet message; start new game. 
         public Form1()
         {
             InitializeComponent();
@@ -74,8 +61,8 @@ namespace Snake
         }
 
         private void InitializeGrid()
-        {
-            int n = this.ClientSize.Width / cellSize;
+		{
+			int n = this.ClientSize.Width / cellSize;
             int m = this.ClientSize.Height / cellSize;
             grid = new Rectangle[n, m];
             for (int i = 0; i < n; i++)
@@ -91,7 +78,7 @@ namespace Snake
             int i0 = gridSize.Width / 2, j0 = gridSize.Height / 2;
             for (int i = 0; i < 5; i++)
             {
-                snake.Add(new Pos(i0, j0 + i));
+                snake.Add(new Point(i0, j0 + i));
             }
         }
 
@@ -111,7 +98,7 @@ namespace Snake
             SolidBrush brush = new SolidBrush(Color.Black);
             for (int i = 0; i < snake.Count; i++)
             {
-                e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[i].i, snake[i].j])); 
+                e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[i].X, snake[i].Y])); 
             }
             brush.Dispose();
         }
@@ -119,9 +106,9 @@ namespace Snake
         private void DrawFood(PaintEventArgs e)
         {
             SolidBrush brush = new SolidBrush(Color.Crimson);
-            foreach (Pos p in food)
+            foreach (Point p in food)
             {
-                e.Graphics.FillRectangle(brush, squeezeRect(grid[p.i, p.j]));
+                e.Graphics.FillRectangle(brush, squeezeRect(grid[p.X, p.Y]));
             }
             brush.Dispose();
         }
@@ -132,16 +119,16 @@ namespace Snake
             switch (newDir)
             {
                 case DirEnum.Up:
-                    nextPos.j--;
+                    nextPos.Y--;
                     break;
                 case DirEnum.Down:
-                    nextPos.j++;
+                    nextPos.Y++;
                     break;
                 case DirEnum.Left:
-                    nextPos.i--;
+                    nextPos.X--;
                     break;
                 case DirEnum.Right:
-                    nextPos.i++;
+                    nextPos.X++;
                     break;
             }
             bool isFoodEaten;
@@ -168,16 +155,18 @@ namespace Snake
 
         private void spawnFood()
         {
-            freeCells = new Pos[gridSize.Width * gridSize.Height];
+			//Fill the freeCells array with cells in which there is no snake
+			//and then choose random index from this array.
+            freeCells = new Point[gridSize.Width * gridSize.Height];
             for (int i = 0; i < gridSize.Width; i++)
                 for (int j = 0; j < gridSize.Height; j++)
                 {
                     bool isFound = false;
                     for (int k = 0; k < snake.Count; k++)
-                        if (snake[k] == new Pos(i, j)) isFound = true;
-                    if (!isFound) freeCells[i + j * gridSize.Width] = new Pos(i, j);
+                        if (snake[k] == new Point(i, j)) isFound = true;
+                    if (!isFound) freeCells[i + j * gridSize.Width] = new Point(i, j);
                 }
-            Pos p = freeCells[random.Next(0, freeCells.Length - 1)];
+            Point p = freeCells[random.Next(0, freeCells.Length - 1)];
             food.Add(p);
         }
 
@@ -202,12 +191,12 @@ namespace Snake
                 isFoodEaten = true;
             else
                 isFoodEaten = false;
-            if ((nextPos.i < 0 || nextPos.j < 0) ||
-                    (nextPos.i >= gridSize.Width || nextPos.j >= gridSize.Height))
+            if ((nextPos.X < 0 || nextPos.Y < 0) ||
+                    (nextPos.X >= gridSize.Width || nextPos.Y >= gridSize.Height))
                 return true;
-            foreach (Pos p in snake)
+            foreach (Point p in snake)
             {
-                if ((nextPos.i == p.i) && (nextPos.j == p.j))
+                if ((nextPos.X == p.X) && (nextPos.Y == p.Y))
                     return true;
             }
             return false;
@@ -222,6 +211,7 @@ namespace Snake
             newGame();
         }
 
+		//Make the rect smaller, retain the same center point.
         private Rectangle squeezeRect(Rectangle rect)
         {
             return new Rectangle(rect.X + sqz, rect.Y + sqz, rect.Width - 2 * sqz, rect.Height - 2 * sqz);
@@ -248,33 +238,39 @@ namespace Snake
             Invalidate();
         }
 
+		//TODO: Change movement logic, use stack for store keys pressed.
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
             switch (e.KeyCode)
             {
-                //arrow keys - snake movement
-                case Keys.Left:
+				//Snake movement - Arrows and WASD.
+				case Keys.Left:
+				case Keys.A:
                     if (curDir != DirEnum.Right)
                         newDir = DirEnum.Left;
                         break;
                 case Keys.Right:
+				case Keys.D:
                     if (curDir != DirEnum.Left)
                         newDir = DirEnum.Right;
                         break;
-                case Keys.Up:
+				case Keys.Up:
+				case Keys.W:
                     if (curDir != DirEnum.Down)
                         newDir = DirEnum.Up;
                         break;
-                case Keys.Down:
+				case Keys.Down:
+				case Keys.S:
                     if (curDir != DirEnum.Up)
                         newDir = DirEnum.Down;
                         break;
-                //utility
-                case Keys.Space: //pause
+                //Pause.
+                case Keys.Space:
                     timer.Enabled = timer.Enabled ? false : true;
                     break;
-                case Keys.Q: //exit
+				//Quit.
+                case Keys.Q:
                     Application.Exit();
                     break;
            }
@@ -292,5 +288,6 @@ namespace Snake
             DrawSnake(e);
             DrawFood(e);
         }
+
     }
 }
