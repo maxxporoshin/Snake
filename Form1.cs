@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
 
 namespace Snake
@@ -34,12 +33,10 @@ namespace Snake
         private Timer timer;
 		//Current direction of the snake.
         private DirEnum curDir;
-		//New direction of the snake that set by player with arrows and WASD.
-        private DirEnum newDir;
+		//New directions of the snake that set by player with arrows and WASD.
+		private LinkedList<DirEnum> newDirs = new LinkedList<DirEnum>();
 		//Position where snake will move on the next timer's tick.
-        private Point nextPos;
-		//Game state, used to wait player when new game started.
-        private bool isWaitingForUser = true;
+		private Point nextPos;
 		//Random unit, used in food spawning.
         private Random random = new Random();
 		//Storing all snake free cells of the grid, used in food spawning 
@@ -116,7 +113,10 @@ namespace Snake
         private void moveSnake()
         {
             nextPos = snake[0];
-            switch (newDir)
+			if (newDirs.Count == 0)
+				newDirs.AddLast(curDir);
+			DirEnum dir = newDirs.First.Value;
+            switch (dir)
             {
                 case DirEnum.Up:
                     nextPos.Y--;
@@ -172,17 +172,11 @@ namespace Snake
 
         private void newGame()
         {
-            if (isWaitingForUser)
-            {
-                InitializeSnake();
-                food.Clear();
-                newDir = DirEnum.Up;
-            }
-            else
-            {
-                timer.Start();
-                spawnFood();
-            }
+			InitializeSnake();
+			food.Clear();
+			newDirs.Clear();
+			newDirs.AddLast(DirEnum.Up);
+            spawnFood();
         }
 
         private bool checkCollision(out bool isFoodEaten)
@@ -204,10 +198,9 @@ namespace Snake
 
         private void lose()
         {
-            timer.Stop();
+            timer.Enabled = false;
             String str = "Your Score: " + snake.Count.ToString();
             MessageBox.Show(str, "You Lose");
-            isWaitingForUser = true;
             newGame();
         }
 
@@ -234,37 +227,46 @@ namespace Snake
         private void OnTimerTick(object sender, EventArgs e)
         {
             moveSnake();
-            curDir = newDir;
+            curDir = newDirs.First.Value;
+			newDirs.RemoveFirst();
             Invalidate();
         }
 
-		//TODO: Change movement logic, use stack for store keys pressed.
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
+			DirEnum dir;
+			if (newDirs.Count > 0)
+				dir = newDirs.Last.Value;
+			else
+				dir = curDir;
             switch (e.KeyCode)
             {
 				//Snake movement - Arrows and WASD.
 				case Keys.Left:
 				case Keys.A:
-                    if (curDir != DirEnum.Right)
-                        newDir = DirEnum.Left;
+                    if ((dir != DirEnum.Right) && (dir != DirEnum.Left))
+                        newDirs.AddLast(DirEnum.Left);
+					timer.Enabled = true;
                         break;
                 case Keys.Right:
 				case Keys.D:
-                    if (curDir != DirEnum.Left)
-                        newDir = DirEnum.Right;
-                        break;
+                    if ((dir != DirEnum.Left)  && (dir != DirEnum.Right))
+                        newDirs.AddLast(DirEnum.Right);
+					timer.Enabled = true;
+					break;
 				case Keys.Up:
 				case Keys.W:
-                    if (curDir != DirEnum.Down)
-                        newDir = DirEnum.Up;
-                        break;
+                    if ((dir != DirEnum.Down)  && (dir != DirEnum.Up))
+                        newDirs.AddLast(DirEnum.Up);
+					timer.Enabled = true;
+					break;
 				case Keys.Down:
 				case Keys.S:
-                    if (curDir != DirEnum.Up)
-                        newDir = DirEnum.Down;
-                        break;
+                    if ((dir != DirEnum.Up)  && (dir != DirEnum.Down))
+                        newDirs.AddLast(DirEnum.Down);
+					timer.Enabled = true;
+					break;
                 //Pause.
                 case Keys.Space:
                     timer.Enabled = timer.Enabled ? false : true;
@@ -274,11 +276,6 @@ namespace Snake
                     Application.Exit();
                     break;
            }
-                if (isWaitingForUser)
-                {
-                    isWaitingForUser = false;
-                    newGame();
-                }
         }
 
         protected override void OnPaint(PaintEventArgs e)
