@@ -6,20 +6,20 @@ using System.Windows.Forms;
 namespace Snake
 {
 
-    enum DirEnum { Up, Down, Right, Left }
+    enum Direction { Up, Down, Right, Left }
+
+	enum State { Game, Greeting, GameOver, Pause }
 
     public partial class Form1 : Form
     {
         //Size of the one cell.
-        private int cellSize = 16;
+        private int cellSize = 32;
         //Size of the main grid matrix.
         private Size gridSize = new Size(15, 15);
         //Main timer interval.
         private int interval = 100;
         //Snake's and food's cells reducing.
         private int sqz = 2;
-        //Draw grid by cell's cells(todo: draw by lines).
-        private bool isDrawingGrid = false;
 
         //Main grid which is initialized in form constructor with set in gridSize size.
         private Rectangle[,] grid;
@@ -32,15 +32,16 @@ namespace Snake
 		//Main game timer.
         private Timer timer;
 		//Current direction of the snake.
-        private DirEnum curDir;
+        private Direction curDir;
 		//New directions of the snake that set by player with arrows and WASD.
-		private LinkedList<DirEnum> newDirs = new LinkedList<DirEnum>();
+		private LinkedList<Direction> newDirs = new LinkedList<Direction>();
 		//Position where snake will move on the next timer's tick.
 		private Point nextPos;
 		//Random unit, used in food spawning.
         private Random random = new Random();
-		//Storing all snake free cells of the grid, used in food spawning 
+		//Storing all snake free cells of the grid, used in food spawning.
         private Point[] freeCells;
+		State gameState;
      
 		//Initialize component, grid, timer, greet message; start new game. 
         public Form1()
@@ -52,9 +53,7 @@ namespace Snake
             timer.Tick += new System.EventHandler(this.OnTimerTick);
             timer.Interval = interval;
             InitializeGrid();
-            MessageBox.Show("Move snake: Arrows" + Environment.NewLine 
-                + "Pause: Space" + Environment.NewLine + "Quit: Q", "Welcome");
-            newGame();
+			setState(State.Greeting);
         }
 
         private void InitializeGrid()
@@ -79,78 +78,72 @@ namespace Snake
             }
         }
 
-        private void DrawGrid(PaintEventArgs e)
-        {
-            Pen pen = new Pen(Color.Black);
-            for (int i = 0; i < grid.GetLength(0); i++)
-                for (int j = 0; j < grid.GetLength(1); j++)
-                {
-                    e.Graphics.DrawRectangle(pen, grid[i, j]);
-                }
-            pen.Dispose();
-        }
+		private void setState(State state)
+		{
+			switch (state)
+			{
+				case State.Greeting:
+					InitializeSnake();
+					food.Clear();
+					newDirs.Clear();
+					newDirs.AddLast(Direction.Up);
+					spawnFood();
+					break;
+				case State.Game:
+					timer.Start();
+					break;
+				case State.Pause:
+					timer.Stop();
+					break;
+				case State.GameOver:
+					timer.Stop();
+					break;
+			}
+			gameState = state;
+			Invalidate();
+		}
 
-        private void DrawSnake(PaintEventArgs e)
-        {
-            SolidBrush brush = new SolidBrush(Color.Black);
-            for (int i = 0; i < snake.Count; i++)
-            {
-                e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[i].X, snake[i].Y])); 
-            }
-            brush.Dispose();
-        }
-
-        private void DrawFood(PaintEventArgs e)
-        {
-            SolidBrush brush = new SolidBrush(Color.Crimson);
-            foreach (Point p in food)
-            {
-                e.Graphics.FillRectangle(brush, squeezeRect(grid[p.X, p.Y]));
-            }
-            brush.Dispose();
-        }
-
-        private void moveSnake()
+		private void moveSnake()
         {
             nextPos = snake[0];
 			if (newDirs.Count == 0)
 				newDirs.AddLast(curDir);
-			DirEnum dir = newDirs.First.Value;
+			Direction dir = newDirs.First.Value;
             switch (dir)
             {
-                case DirEnum.Up:
+                case Direction.Up:
                     nextPos.Y--;
                     break;
-                case DirEnum.Down:
+                case Direction.Down:
                     nextPos.Y++;
                     break;
-                case DirEnum.Left:
+                case Direction.Left:
                     nextPos.X--;
                     break;
-                case DirEnum.Right:
+                case Direction.Right:
                     nextPos.X++;
                     break;
             }
             bool isFoodEaten;
-            if (!checkCollision(out isFoodEaten))
-            {
-                if (isFoodEaten)
-                {
-                    snake.Insert(0, nextPos);
-                    food.Remove(nextPos);
-                    spawnFood();
-                }
-                else
-                {
-                    for (int k = snake.Count - 1; k > 0; k--)
-                    {
-                        snake[k] = snake[k - 1];
-                    }
-                    snake[0] = nextPos;
-                }
-            }
-            else
-                lose();
+			if (!checkCollision(out isFoodEaten))
+			{
+				if (isFoodEaten)
+				{
+					snake.Insert(0, nextPos);
+					food.Remove(nextPos);
+					spawnFood();
+				}
+				else
+				{
+					for (int k = snake.Count - 1; k > 0; k--)
+					{
+						snake[k] = snake[k - 1];
+					}
+					snake[0] = nextPos;
+				}
+			}
+			else
+				setState(State.GameOver);
         }
 
         private void spawnFood()
@@ -170,15 +163,6 @@ namespace Snake
             food.Add(p);
         }
 
-        private void newGame()
-        {
-			InitializeSnake();
-			food.Clear();
-			newDirs.Clear();
-			newDirs.AddLast(DirEnum.Up);
-            spawnFood();
-        }
-
         private bool checkCollision(out bool isFoodEaten)
         {
             if (food.Contains(nextPos))
@@ -194,14 +178,6 @@ namespace Snake
                     return true;
             }
             return false;
-        }
-
-        private void lose()
-        {
-            timer.Enabled = false;
-            String str = "Your Score: " + snake.Count.ToString();
-            MessageBox.Show(str, "You Lose");
-            newGame();
         }
 
 		//Make the rect smaller, retain the same center point.
@@ -235,56 +211,116 @@ namespace Snake
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-			DirEnum dir;
+			Direction dir;
 			if (newDirs.Count > 0)
 				dir = newDirs.Last.Value;
 			else
 				dir = curDir;
+			bool isControlKeyPressed = false;
             switch (e.KeyCode)
             {
 				//Snake movement - Arrows and WASD.
 				case Keys.Left:
 				case Keys.A:
-                    if ((dir != DirEnum.Right) && (dir != DirEnum.Left))
-                        newDirs.AddLast(DirEnum.Left);
-					timer.Enabled = true;
-                        break;
+                    if ((dir != Direction.Right) && (dir != Direction.Left))
+                        newDirs.AddLast(Direction.Left);
+					isControlKeyPressed = true;
+					break;
                 case Keys.Right:
 				case Keys.D:
-                    if ((dir != DirEnum.Left)  && (dir != DirEnum.Right))
-                        newDirs.AddLast(DirEnum.Right);
-					timer.Enabled = true;
+                    if ((dir != Direction.Left)  && (dir != Direction.Right))
+                        newDirs.AddLast(Direction.Right);
+					isControlKeyPressed = true;
 					break;
 				case Keys.Up:
 				case Keys.W:
-                    if ((dir != DirEnum.Down)  && (dir != DirEnum.Up))
-                        newDirs.AddLast(DirEnum.Up);
-					timer.Enabled = true;
+                    if ((dir != Direction.Down)  && (dir != Direction.Up))
+                        newDirs.AddLast(Direction.Up);
+					isControlKeyPressed = true;
 					break;
 				case Keys.Down:
 				case Keys.S:
-                    if ((dir != DirEnum.Up)  && (dir != DirEnum.Down))
-                        newDirs.AddLast(DirEnum.Down);
-					timer.Enabled = true;
+                    if ((dir != Direction.Up)  && (dir != Direction.Down))
+                        newDirs.AddLast(Direction.Down);
+					isControlKeyPressed = true;
 					break;
                 //Pause.
                 case Keys.Space:
-                    timer.Enabled = timer.Enabled ? false : true;
-                    break;
+					if (gameState == State.Game)
+					{
+						setState(State.Pause);
+					}
+					else
+					{
+						isControlKeyPressed = true;
+					}
+					break;
+				case Keys.Enter:
+					isControlKeyPressed = true;
+					break;
 				//Quit.
                 case Keys.Q:
+				case Keys.Escape:
                     Application.Exit();
                     break;
-           }
+			}
+			if (isControlKeyPressed)
+			{
+				if (gameState != State.GameOver)
+				{
+					setState(State.Game);
+				}
+				else
+				{
+					setState(State.Greeting);
+				}
+			}			
         }
 
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            if (isDrawingGrid) DrawGrid(e);
-            DrawSnake(e);
-            DrawFood(e);
-        }
-
-    }
+		protected override void OnPaint(PaintEventArgs e)
+		{
+			base.OnPaint(e);
+			SolidBrush brush = new SolidBrush(Color.Black);
+			byte alpha = 255;
+			StringFormat sf = new StringFormat();
+			sf.Alignment = StringAlignment.Center;
+			sf.LineAlignment = StringAlignment.Center;
+			Font font = new Font("Arial", 20);
+			String text;
+			switch (gameState) {
+				case State.Game:
+					break;
+				case State.Greeting:
+					text = "New Game\n\nMove Snake: Arrows or WASD\n\nPause: Space\n\nQuit: Q or ESC";
+					e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+					alpha = 50;
+					break;
+				case State.Pause:
+					text = "Pause";
+					e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+					alpha = 150;
+					break;
+				case State.GameOver:
+					text = "Game Over\n\n\nYour score: " + snake.Count.ToString();
+					e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+					alpha = 50;
+					break;
+			}
+			//Draw snake.
+			brush.Color = Color.FromArgb(alpha, Color.DarkMagenta);
+			e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[0].X, snake[0].Y]));
+			brush.Color = Color.FromArgb(alpha, Color.ForestGreen);
+			for (int i = 1; i < snake.Count; i++)
+			{
+				e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[i].X, snake[i].Y]));
+			}
+			//Draw food.
+			brush.Color = Color.FromArgb(alpha, Color.Black);
+			foreach (Point p in food)
+			{
+				e.Graphics.FillRectangle(brush, squeezeRect(grid[p.X, p.Y]));
+			}
+			brush.Dispose();
+		}
+	}
 }
