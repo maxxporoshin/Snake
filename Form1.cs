@@ -18,8 +18,6 @@ namespace Snake
         private Size gridSize = new Size(15, 15);
         //Main timer interval.
         private int interval = 100;
-        //Snake's and food's cells reducing.
-        private int sqz = 2;
 
         //Main grid which is initialized in form constructor with set in gridSize size.
         private Rectangle[,] grid;
@@ -47,7 +45,6 @@ namespace Snake
         public Form1()
         {
             InitializeComponent();
-            DoubleBuffered = true;
             this.ClientSize = new Size(cellSize * gridSize.Width, cellSize * gridSize.Height);
             timer = new Timer();
             timer.Tick += new System.EventHandler(this.OnTimerTick);
@@ -72,7 +69,7 @@ namespace Snake
         {
             snake.Clear();
             int i0 = gridSize.Width / 2, j0 = gridSize.Height / 2;
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 3; i++)
             {
                 snake.Add(new Point(i0, j0 + i));
             }
@@ -180,12 +177,6 @@ namespace Snake
             return false;
         }
 
-		//Make the rect smaller, retain the same center point.
-        private Rectangle squeezeRect(Rectangle rect)
-        {
-            return new Rectangle(rect.X + sqz, rect.Y + sqz, rect.Width - 2 * sqz, rect.Height - 2 * sqz);
-        }
-
         private void Form1_MouseDown(object sender, MouseEventArgs e)
         {
             dragFrom = e.Location;
@@ -246,6 +237,7 @@ namespace Snake
 					break;
                 //Pause.
                 case Keys.Space:
+				case Keys.Escape:
 					if (gameState == State.Game)
 					{
 						setState(State.Pause);
@@ -260,7 +252,6 @@ namespace Snake
 					break;
 				//Quit.
                 case Keys.Q:
-				case Keys.Escape:
                     Application.Exit();
                     break;
 			}
@@ -285,46 +276,63 @@ namespace Snake
 			StringFormat sf = new StringFormat();
 			sf.Alignment = StringAlignment.Center;
 			sf.LineAlignment = StringAlignment.Center;
-			Font font = new Font("Arial", 20);
-			String text;
+			Font font = new Font("Cooper Black", 20);
+			String text = "";
 			switch (gameState) {
 				case State.Game:
 					break;
 				case State.Greeting:
-					text = "New Game\n\nMove Snake: Arrows or WASD\n\nPause: Space\n\nQuit: Q or ESC";
-					e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+					text = "New Game\n\nMove Snake: Arrows or WASD\n\nPause: Space or ESC\n\nQuit: Q";
 					alpha = 50;
 					break;
 				case State.Pause:
-					text = "Pause";
-					e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+					text = "Pause\n\nPress Q to quit";
 					alpha = 150;
 					break;
 				case State.GameOver:
-					text = "Game Over\n\n\nYour score: " + snake.Count.ToString();
-					e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+					text = "Game Over\n\n\nYour score: " + (snake.Count - 3).ToString();
 					alpha = 50;
 					break;
 			}
 			//Draw snake.
-			brush.Color = Color.FromArgb(alpha, Color.BlueViolet);
-			e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[0].X, snake[0].Y]));
 			brush.Color = Color.FromArgb(alpha, Color.ForestGreen);
-			for (int i = 1; i < snake.Count; i++)
+			Pen pen = new Pen(Color.Black, 1);
+			for (int i = 0; i < snake.Count; i++)
 			{
-				e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[i].X, snake[i].Y]));
+				e.Graphics.FillRectangle(brush, grid[snake[i].X, snake[i].Y]);
+				e.Graphics.DrawRectangle(pen, grid[snake[i].X, snake[i].Y]);
+				if (i == 0) brush.Color = Color.FromArgb(alpha, Color.YellowGreen);
 			}
 			//Draw food.
-			brush.Color = Color.FromArgb(alpha, Color.Black);
+			brush.Color = Color.FromArgb(alpha, Color.BlueViolet);
 			foreach (Point p in food)
 			{
-				e.Graphics.FillRectangle(brush, squeezeRect(grid[p.X, p.Y]));
+				e.Graphics.FillRectangle(brush, grid[p.X, p.Y]);
+				e.Graphics.DrawRectangle(pen, grid[p.X, p.Y]);
 			}
-			brush.Dispose();
-			Pen pen = new Pen(Color.BlueViolet, 5);
+			//Draw border.
+			pen.Color = Color.BlueViolet;
+			pen.Width = 5;
 			Point[] points = { new Point(0, 0), new Point(ClientSize.Width - 1, 0),
 				new Point(ClientSize.Width - 1, ClientSize.Height - 1), new Point(0, ClientSize.Height - 1), new Point(0, 0) };
 			e.Graphics.DrawLines(pen, points);
+			//Draw text.
+			brush.Color = Color.Black;
+			if ((gameState == State.Greeting) || (gameState == State.Pause) || (gameState == State.GameOver))
+			{
+				e.Graphics.DrawString(text, font, brush, new Rectangle(new Point(0, 0), ClientSize), sf);
+			}
+			pen.Dispose();
+			brush.Dispose();
+		}
+
+		protected override void OnLostFocus(EventArgs e)
+		{
+			base.OnLostFocus(e);
+			if (gameState == State.Game)
+			{
+				setState(State.Pause);
+			}
 		}
 	}
 }
