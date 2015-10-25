@@ -307,7 +307,7 @@ namespace Snake
 					break;
 			}
 			//Draw snake.
-			brush.Color = Color.FromArgb(alpha, Color.DarkMagenta);
+			brush.Color = Color.FromArgb(alpha, Color.BlueViolet);
 			e.Graphics.FillRectangle(brush, squeezeRect(grid[snake[0].X, snake[0].Y]));
 			brush.Color = Color.FromArgb(alpha, Color.ForestGreen);
 			for (int i = 1; i < snake.Count; i++)
@@ -321,6 +321,10 @@ namespace Snake
 				e.Graphics.FillRectangle(brush, squeezeRect(grid[p.X, p.Y]));
 			}
 			brush.Dispose();
+			Pen pen = new Pen(Color.BlueViolet, 5);
+			Point[] points = { new Point(0, 0), new Point(ClientSize.Width - 1, 0),
+				new Point(ClientSize.Width - 1, ClientSize.Height - 1), new Point(0, ClientSize.Height - 1), new Point(0, 0) };
+			e.Graphics.DrawLines(pen, points);
 		}
 	}
 }
