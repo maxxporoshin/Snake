@@ -17,7 +17,7 @@ namespace Snake
         //Size of the main grid matrix.
         private Size gridSize = new Size(15, 15);
         //Main timer interval.
-        private int interval = 100;
+        private int interval = 50;
 
         //Main grid which is initialized in form constructor with set in gridSize size.
         private Rectangle[,] grid;
@@ -37,8 +37,6 @@ namespace Snake
 		private Point nextPos;
 		//Random unit, used in food spawning.
         private Random random = new Random();
-		//Storing all snake free cells of the grid, used in food spawning.
-        private Point[] freeCells;
 		State gameState;
      
 		//Initialize component, grid, timer, greet message; start new game. 
@@ -140,24 +138,26 @@ namespace Snake
 				}
 			}
 			else
+			{
 				setState(State.GameOver);
+			}
         }
 
         private void spawnFood()
         {
-			//Fill the freeCells array with cells in which there is no snake
-			//and then choose random index from this array.
-            freeCells = new Point[gridSize.Width * gridSize.Height];
-            for (int i = 0; i < gridSize.Width; i++)
-                for (int j = 0; j < gridSize.Height; j++)
-                {
-                    bool isFound = false;
-                    for (int k = 0; k < snake.Count; k++)
-                        if (snake[k] == new Point(i, j)) isFound = true;
-                    if (!isFound) freeCells[i + j * gridSize.Width] = new Point(i, j);
-                }
-            Point p = freeCells[random.Next(0, freeCells.Length - 1)];
-            food.Add(p);
+			Point point;
+			while (true)
+			{
+				point = new Point(random.Next(0, gridSize.Width - 1), random.Next(0, gridSize.Height - 1));
+				bool isOnSnake = false;
+				foreach (Point p in snake)
+				{
+					if (p.Equals(point))
+						isOnSnake = true;
+				}
+				if (!isOnSnake) break;
+            }
+            food.Add(point);
         }
 
         private bool checkCollision(out bool isFoodEaten)
